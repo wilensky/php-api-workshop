@@ -1,0 +1,15 @@
+{
+    "name": "acme/generic-api",
+    "description": "Generic API implementation",
+    "type": "library",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Acme\\": "src/"
+        }
+    }
+}
