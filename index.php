@@ -6,21 +6,27 @@ require('./vendor/autoload.php');
 
 use Acme\Api\{Request, Response, GetRequest, PostRequest};
 use Acme\Api\Exceptions\ApiException;
+use Acme\Api\StaticTokenAuthorizer;
 
 use Acme\JsonPlaceholderApi\Api as JPApi;
 use Acme\JsonPlaceholderApi\Requests\{
-    GetPost, PostPosts, PutPost
+    GetPost, PostPosts, PutPost, SomeAuthorizedRequest
 };
 
-$api = new JPApi('http://jsonplaceholder.typicode.com');
+$api = new JPApi(
+    'http://jsonplaceholder.typicode.com',
+    new StaticTokenAuthorizer('s0m3st4tIkt0k3n')
+);
+
 $getPost = new GetPost(1);
 $postPosts = (new PostPosts())->setTitle('Some title')->setText('My text')->setCategory('Tra-la-la');
 $putPosts = (new PutPost(1))->setTitle('Some title')->setText('My text')->setCategory('Tra-la-la');
+$authR = (new SomeAuthorizedRequest(1));
 //print_r($api->call($getPost));
 
 try {
-    $resp = $api->call($putPosts);
-    print_r($resp);
+    $resp = $api->call($authR);
+    //print_r($resp);
 } catch (\PDOException $e) {
     // $logger->error();
     if (strstr($e->getMessage(), 'connection closed')) {

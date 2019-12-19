@@ -2,7 +2,7 @@
 
 namespace Acme\Api;
 
-use Acme\Interfaces\Api\{IApi, IResponse, IRequest, IContentTypeAware, IHttpMethodAware};
+use Acme\Interfaces\Api\{IApi, IAuthorizedRequest, IResponse, IRequest, IContentTypeAware, IHttpMethodAware, IAuthorizer};
 use Acme\Api\Exceptions\ApiException;
 
 use Acme\Api\Response;
@@ -11,6 +11,7 @@ class Api implements IApi
 {
     private $url;
     private $ch;
+    private $authorizer;
 
     public function __construct(string $baseUrl)
     {
@@ -41,6 +42,14 @@ class Api implements IApi
         $method = $request->getMethod();
 
         printf('%s %s'.PHP_EOL, $method, (string)$request);
+
+        if ($request instanceof IAuthorizedRequest && !$this->hasAuthorizer()) {
+            throw new \Exception('Authorizer needed', 1010);
+        }
+
+        if ($request instanceof IAuthorizedRequest) {
+            $this->getAuthorizer()($request);
+        }
 
         $ch = $this->getCh($this->getUrl() . (string)$request);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
@@ -94,5 +103,21 @@ class Api implements IApi
     private function getUrl(): string
     {
         return $this->url;
+    }
+
+    protected function setAuthorizer(IAuthorizer $auth): IApi
+    {
+        $this->authorizer = $auth;
+        return $this;
+    }
+
+    private function getAuthorizer(): ?IAuthorizer
+    {
+        return $this->authorizer;
+    }
+
+    private function hasAuthorizer(): bool
+    {
+        return $this->getAuthorizer() instanceof IAuthorizer;
     }
 }
