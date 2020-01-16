@@ -39,7 +39,7 @@ class Request implements IRequest, IContentTypeAware, IHttpMethodAware
 
     public function setContentType(string $type): IRequest
     {
-        return $this->setHeader('Content-Type', $type);
+        return $this->setHeader(self::HEADER_CONTENT_TYPE, $type);
     }
 
     public function setContentTypeJson(): IRequest
