@@ -34,6 +34,32 @@ class Api implements IApi
         }
     }
 
+    private function setOpt(string $opt, $val): Api
+    {
+        curl_setopt($this->getCh(), $opt, $val);
+        return $this;
+    }
+
+    private function getInfo(string $param)
+    {
+        return curl_getinfo($this->getCh(), $param);
+    }
+
+    public function getStatusCode(): int
+    {
+        return (int)$this->getInfo(CURLINFO_HTTP_CODE);
+    }
+
+    public function getHeaderSize(): int
+    {
+        return (int)$this->getInfo(CURLINFO_HEADER_SIZE);
+    }
+
+    public function exec(): string
+    {
+        return curl_exec($this->getCh());
+    }
+
     /**
      * @throw \Exception
      */
@@ -52,24 +78,24 @@ class Api implements IApi
         }
 
         $ch = $this->getCh($this->getUrl() . (string)$request);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $request->getHeaders());
-        //curl_setopt($ch, CURLOPT_VERBOSE, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1);
+        $this->setOpt(CURLOPT_CUSTOMREQUEST, $method);
+        $this->setOpt(CURLOPT_RETURNTRANSFER, 1);
+        $this->setOpt(CURLOPT_HTTPHEADER, $request->getHeaders());
+        //$this->setOpt(CURLOPT_VERBOSE, 1);
+        $this->setOpt(CURLOPT_HEADER, 1);
 
         if (
             $method !== IHttpMethodAware::METHOD_GET
             && $method !== IHttpMethodAware::METHOD_DELETE
         ) {
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $this->getRequestBody($request));
+            $this->setOpt(CURLOPT_POST, 1);
+            $this->setOpt(CURLOPT_POSTFIELDS, $this->getRequestBody($request));
         }
 
-        $response = curl_exec($ch);
+        $response = $this->exec();
 
-        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $code = $this->getStatusCode();
+        $headerSize = $this->getHeaderSize();
         $body = substr($response, $headerSize);
         $headers = explode("\r\n", trim(substr($response, 0, $headerSize)));
 
@@ -119,5 +145,10 @@ class Api implements IApi
     private function hasAuthorizer(): bool
     {
         return $this->getAuthorizer() instanceof IAuthorizer;
+    }
+
+    public function __invoke(IRequest $req): IResponse
+    {
+        return $this->call($req);
     }
 }
