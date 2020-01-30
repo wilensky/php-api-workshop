@@ -12,10 +12,12 @@ use Acme\JsonPlaceholderApi\Api as JPApi;
 use Acme\JsonPlaceholderApi\Requests\{
     GetPost, PostPosts, PutPost, SomeAuthorizedRequest
 };
+use Acme\Api\HttpApiClient;
 
 $api = new JPApi(
     'http://jsonplaceholder.typicode.com',
-    new StaticTokenAuthorizer('s0m3st4tIkt0k3n')
+    new StaticTokenAuthorizer('s0m3st4tIkt0k3n'),
+    new HttpApiClient()
 );
 
 $getPost = new GetPost(1);

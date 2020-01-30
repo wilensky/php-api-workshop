@@ -2,20 +2,31 @@
 
 namespace Acme\Api;
 
-use Acme\Interfaces\Api\{IApi, IAuthorizedRequest, IResponse, IRequest, IContentTypeAware, IHttpMethodAware, IAuthorizer};
-use Acme\Api\Exceptions\ApiException;
+use Acme\Interfaces\Api\{IApi, IApiClient, IAuthorizedRequest, IResponse, IRequest, IContentTypeAware, IHttpMethodAware, IAuthorizer};
+use Acme\Api\Exceptions\{ApiException, BadJsonException};
 
 use Acme\Api\Response;
 
 class Api implements IApi
 {
     private $url;
-    private $ch;
     private $authorizer;
 
-    public function __construct(string $baseUrl)
+    public function __construct(string $baseUrl, IApiClient $client)
     {
         $this->url = $baseUrl;
+        $this->setClient($client);
+    }
+
+    private function setClient(IApiClient $client): IApi
+    {
+        $this->client = $client;
+        return $this;
+    }
+
+    private function getClient(): IApiClient
+    {
+        return $this->client;
     }
 
     /**
@@ -34,32 +45,6 @@ class Api implements IApi
         }
     }
 
-    private function setOpt(string $opt, $val): Api
-    {
-        curl_setopt($this->getCh(), $opt, $val);
-        return $this;
-    }
-
-    private function getInfo(string $param)
-    {
-        return curl_getinfo($this->getCh(), $param);
-    }
-
-    public function getStatusCode(): int
-    {
-        return (int)$this->getInfo(CURLINFO_HTTP_CODE);
-    }
-
-    public function getHeaderSize(): int
-    {
-        return (int)$this->getInfo(CURLINFO_HEADER_SIZE);
-    }
-
-    public function exec(): string
-    {
-        return curl_exec($this->getCh());
-    }
-
     /**
      * @throw \Exception
      */
@@ -67,7 +52,7 @@ class Api implements IApi
     {
         $method = $request->getMethod();
 
-        printf('%s %s'.PHP_EOL, $method, (string)$request);
+        //printf('%s %s'.PHP_EOL, $method, (string)$request);
 
         if ($request instanceof IAuthorizedRequest && !$this->hasAuthorizer()) {
             throw new \Exception('Authorizer needed', 1010);
@@ -77,25 +62,26 @@ class Api implements IApi
             $this->getAuthorizer()($request);
         }
 
-        $ch = $this->getCh($this->getUrl() . (string)$request);
-        $this->setOpt(CURLOPT_CUSTOMREQUEST, $method);
-        $this->setOpt(CURLOPT_RETURNTRANSFER, 1);
-        $this->setOpt(CURLOPT_HTTPHEADER, $request->getHeaders());
-        //$this->setOpt(CURLOPT_VERBOSE, 1);
-        $this->setOpt(CURLOPT_HEADER, 1);
+        $client = $this->getClient();
+        $client->setUrl($this->getUrl() . (string)$request);
+        $client->setOpt(CURLOPT_CUSTOMREQUEST, $method);
+        $client->setOpt(CURLOPT_RETURNTRANSFER, 1);
+        $client->setOpt(CURLOPT_HTTPHEADER, $request->getHeaders());
+        //$client->setOpt(CURLOPT_VERBOSE, 1);
+        $client->setOpt(CURLOPT_HEADER, 1);
 
         if (
             $method !== IHttpMethodAware::METHOD_GET
             && $method !== IHttpMethodAware::METHOD_DELETE
         ) {
-            $this->setOpt(CURLOPT_POST, 1);
-            $this->setOpt(CURLOPT_POSTFIELDS, $this->getRequestBody($request));
+            $client->setOpt(CURLOPT_POST, 1);
+            $client->setOpt(CURLOPT_POSTFIELDS, $this->getRequestBody($request));
         }
 
-        $response = $this->exec();
+        $response = $client->exec();
 
-        $code = $this->getStatusCode();
-        $headerSize = $this->getHeaderSize();
+        $code = $client->getStatusCode();
+        $headerSize = $client->getHeaderSize();
         $body = substr($response, $headerSize);
         $headers = explode("\r\n", trim(substr($response, 0, $headerSize)));
 
@@ -108,22 +94,20 @@ class Api implements IApi
 
         $json = json_decode($body, true);
 
+        if ($json === null) {
+            $err = json_last_error();
+            $msg = json_last_error_msg();
+
+            if ($msg) {
+                throw new BadJsonException($msg, $err, $headers);
+            }
+        }
+
         if ($code >= 400) {
             throw new ApiException($json, $headers, $code);
         }
 
         return new Response($json, $hdrs, $code);
-    }
-
-    private function getCh(string $url = null)
-    {
-        if (is_resource($this->ch)) {
-            return $this->ch;
-        }
-
-        $this->ch = curl_init($url);
-
-        return $this->ch;
     }
 
     private function getUrl(): string
