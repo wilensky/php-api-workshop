@@ -7,9 +7,9 @@ class ApiException extends \Exception
     private $body;
     private $headers;
 
-    public function __construct(array $body = [], array $headers = [], int $code = 0)
+    public function __construct(array $body = [], array $headers = [], int $code = 0, string $msg = 'API error')
     {
-        parent::__construct('API error', $code);
+        parent::__construct($msg, $code);
 
         $this->setBody($body)->setHeaders($headers);
     }
