@@ -3,7 +3,7 @@
 namespace Acme\Api;
 
 use Acme\Interfaces\Api\{IApi, IApiClient, IAuthorizedRequest, IResponse, IRequest, IContentTypeAware, IHttpMethodAware, IAuthorizer};
-use Acme\Api\Exceptions\{ApiException, BadJsonException};
+use Acme\Api\Exceptions\{ApiException, AuthorizerNeededException, BadJsonException};
 
 use Acme\Api\Response;
 
@@ -55,7 +55,7 @@ class Api implements IApi
         //printf('%s %s'.PHP_EOL, $method, (string)$request);
 
         if ($request instanceof IAuthorizedRequest && !$this->hasAuthorizer()) {
-            throw new \Exception('Authorizer needed', 1010);
+            throw new AuthorizerNeededException('Authorizer needed', 1010);
         }
 
         if ($request instanceof IAuthorizedRequest) {
