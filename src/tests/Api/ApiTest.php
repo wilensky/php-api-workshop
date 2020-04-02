@@ -4,8 +4,9 @@ namespace Acme\Tests\Api;
 
 use PHPUnit\Framework\TestCase;
 
-use Acme\Api\{Api, Request, HttpApiClient};
-use Acme\Api\Exceptions\{ApiException, BadJsonException};
+use Acme\Api\{Api, GetRequest, Request, HttpApiClient};
+use Acme\Api\Exceptions\{ApiException, AuthorizerNeededException, BadJsonException};
+use Acme\Interfaces\Api\IAuthorizedRequest;
 use Acme\Interfaces\Api\IResponse;
 
 final class ApiTest extends TestCase
@@ -81,6 +82,11 @@ CF-RAY: 555efe0c1e3bf2c8-WAW
                 ApiException::class
             ],
             [
+                'HTTP/1.1 Blablah'."\n\n".'{soms33tyJS0n}',
+                200,
+                BadJsonException::class
+            ],
+            [
                 $this->httpHeaders.'{soms33tyJS0n}',
                 200,
                 BadJsonException::class
@@ -114,5 +120,21 @@ CF-RAY: 555efe0c1e3bf2c8-WAW
         $this->assertEquals($code, $res->getStatusCode(), 'Check status code');
         $this->assertTrue(is_array($res->getHeaders()));
         $this->assertTrue(is_array($res->getData()));
+    }
+
+    public function testAuthorizedRequest()
+    {
+        $this->expectException(AuthorizerNeededException::class);
+
+        $req = new class extends GetRequest implements IAuthorizedRequest {
+            public function __construct()
+            {
+                parent::__construct('/some/thing');
+            }
+        };
+
+        $api = $this->getApi('http://sgdfgjcfgj.com', ['{}', 200]);
+
+        $api($req);
     }
 }
