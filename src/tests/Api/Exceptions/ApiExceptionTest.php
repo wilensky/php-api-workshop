@@ -1,6 +1,6 @@
 <?php
 
-namespace Acme\Tests\Api;
+namespace Acme\Tests\Api\Exceptions;
 
 use PHPUnit\Framework\TestCase;
 
